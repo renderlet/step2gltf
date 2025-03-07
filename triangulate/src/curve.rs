@@ -28,9 +28,13 @@ impl Curve {
             radius1 * ref_direction,
             radius2 * axis.cross(&ref_direction),
             location);
+            /* 
         let eplane_from_world = world_from_eplane
             .try_inverse()
             .expect("Could not invert");
+        */
+        let eplane_from_world = world_from_eplane
+        .try_inverse().unwrap_or_default();
         Self::Ellipse {
             world_from_eplane,
             eplane_from_world,

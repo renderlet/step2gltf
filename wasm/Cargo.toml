@@ -2,7 +2,7 @@
 name = "wasm"
 version = "0.1.0"
 authors = ["Matt Keeter <matt.j.keeter@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,6 +12,8 @@ triangulate = { path = "../triangulate", default-features = false, features = []
 console_log = "0.2"
 log = "0.4.14"
 wasm-bindgen = "0.2"
+gltf = "1.4.1"
+bytemuck = { version = "1.21.0", features = ["derive"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

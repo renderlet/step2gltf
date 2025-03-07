@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.skypack.dev/three@0.129.0'
+import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js';
 
 let camera, controls, scene, renderer;
@@ -58,6 +59,7 @@ export function loadMesh(buf) {
         scene.remove(obj);
     }
 
+    /*
     const interleaved = new THREE.InterleavedBuffer(buf, 9);
     const geometry = new THREE.BufferGeometry();
 
@@ -71,14 +73,31 @@ export function loadMesh(buf) {
     mesh.updateMatrix();
     mesh.matrixAutoUpdate = false;
     mesh.name = "step";
+*/
 
-    scene.add(mesh);
+    const loader = new GLTFLoader();
 
-    camera.position.set(400, 200, 0);
-    camera.lookAt(new THREE.Vector3(0,0,0));
-    axisX();
+    loader.parse(buf.buffer, '', function ( gltf ) {
 
-    render();
+        var mesh = gltf.scene.children[0];
+        mesh.material = new THREE.MeshPhongMaterial({vertexColors: true});
+        mesh.updateMatrix();
+        mesh.matrixAutoUpdate = false;
+        mesh.name = "step";
+
+        console.log(gltf.scene);
+
+        scene.add(mesh);
+
+        camera.position.set(400, 200, 0);
+        camera.lookAt(new THREE.Vector3(0,0,0));
+        axisX();
+    
+        render();
+    });
+
+
+
 }
 
 export function axisX() {
