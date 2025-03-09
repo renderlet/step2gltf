@@ -155,7 +155,7 @@ pub fn save_debug_panic<'a, E>(pts: &[Point], edges: E, filename: &str)
             break;
         }
     }
-
+    println!("safe_steps {:?}", safe_steps);
     // This will still panic if we can't *construct* the initial triangulation
     let mut t = Triangulation::new_with_edges(pts, edges)
         .expect("Could not build CDT triangulation");

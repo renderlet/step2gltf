@@ -119,6 +119,7 @@ impl<'a> Parse<'a> for Logical {
             map(tag(".T."), |_| Logical(Some(true))),
             map(tag(".F."), |_| Logical(Some(false))),
             map(tag(".UNKNOWN."), |_| Logical(None)),
+            map(tag(".U."), |_| Logical(Some(false))),
         ))(s)
     }
 }

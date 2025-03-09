@@ -55,6 +55,18 @@ impl Surface {
             location, radius,
         }
     }
+
+
+    pub fn new_sphere_axis(axis: DVec3, ref_direction: DVec3, location: DVec3, radius: f64) -> Self {
+        let mat = Self::make_rigid_transform(axis, ref_direction, location);
+        Surface::Sphere {
+            // mat and mat_i are built in prepare()
+            mat,
+            mat_i: mat.try_inverse().expect("Could not invert"),
+            location, radius,
+        }
+    }
+
     pub fn new_cylinder(axis: DVec3, ref_direction: DVec3, location: DVec3, radius: f64) -> Self {
         let mat = Self::make_rigid_transform(axis, ref_direction, location);
         Surface::Cylinder {
@@ -194,6 +206,8 @@ impl Surface {
                 let p = (mat_i * p_).xyz() / *radius;
                 let r = p.yz().norm();
 
+                println!("{:?}", p);
+
                 // Angle from 0 to PI
                 let angle = r.atan2(p.x);
                 let yz = p.yz();
@@ -221,6 +235,7 @@ impl Surface {
                     }
                 }
             },
+            /* 
             Surface::Sphere { mat, mat_i, location, .. } => {
                 let ref_direction = (verts[0].pos - *location).normalize();
                 let d1 = (verts.last().unwrap().pos - *location).normalize();
@@ -231,7 +246,7 @@ impl Surface {
                 *mat_i = mat
                     .try_inverse()
                     .expect("Could not invert");
-            },
+            },*/
             Surface::Torus { axis, mat, mat_i, location, .. } => {
                 let mean_dir = verts.iter()
                     .map(|v| v.pos - *location)
@@ -260,6 +275,12 @@ impl Surface {
             v.norm = self.normal(v.pos, proj);
             pts.push((proj.x, proj.y));
         }
+
+        match &self {
+            Surface::Sphere{..} => println!("End Points"),
+            _ => ()
+        }
+
         // If this is a BSpline surface, calculate an aspect ratio based on the
         // control points net, then use it to transform projected points.  This
         // means that positions in 2D (UV) space are closer to positions in 3D
@@ -296,6 +317,7 @@ impl Surface {
                 // Transform into world space
                 let pos = (mat * DVec4::new(pos.x, pos.y, pos.z, 1.0))
                     .xyz();
+                //println!("{:?}", pos);
                 Some(pos)
             },
             Surface::BSpline(s) => Some(s.surf.point(uv)),

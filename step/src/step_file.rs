@@ -58,6 +58,8 @@ impl<'a> StepFile<'a> {
             out[p.0] = p.1;
         }
 
+        warn!("Finished Parsing");
+
         Self(out)
     }
 

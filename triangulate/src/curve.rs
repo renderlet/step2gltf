@@ -24,17 +24,28 @@ impl Curve {
         -> Self
     {
         // Build a rotation matrix to go from flat (XY) to 3D space
+
+        let x_world = radius1 * ref_direction;
+        let y_world = radius2 * axis.cross(&ref_direction);
+
         let world_from_eplane = Surface::make_affine_transform(axis,
-            radius1 * ref_direction,
-            radius2 * axis.cross(&ref_direction),
+            x_world,
+            y_world,
             location);
-            /* 
-        let eplane_from_world = world_from_eplane
-            .try_inverse()
-            .expect("Could not invert");
-        */
-        let eplane_from_world = world_from_eplane
-        .try_inverse().unwrap_or_default();
+
+        //println!("{:?} {:?} {:?} {:?}", axis, ref_direction, radius1, radius2);
+
+        let inverse = world_from_eplane
+        .try_inverse();
+        let eplane_from_world =match inverse {
+            Some(j) => j,
+            None => {
+                
+                println!("INVERSE! Z {:?} X {:?} Y {:?} L {:?}", axis, x_world, y_world, location);
+                Default::default()
+            }
+            
+        };
         Self::Ellipse {
             world_from_eplane,
             eplane_from_world,
@@ -113,6 +124,7 @@ impl Curve {
                 }
                 out_world.push(v);
                 out_world
+                //Vec::new()
             }
         }
     }

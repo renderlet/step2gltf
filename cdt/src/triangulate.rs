@@ -6,6 +6,8 @@ use crate::{
     predicates::{acute, orient2d, in_circle, centroid, distance2, pseudo_angle},
 };
 
+use log::warn;
+
 #[derive(Debug)]
 enum Walk {
     Inside(EdgeIndex),
@@ -922,6 +924,7 @@ impl Triangulation {
         // Exit this triangle, either onto the hull or continuing inside
         // the triangulation.
         if edge_ba.fixed() {
+            warn!("Crossing Fixed 0.0 {:?}", edge_ba);
             return Err(Error::CrossingFixedEdge);
         }
         assert!(edge_ba.buddy != EMPTY_EDGE);
@@ -1010,6 +1013,7 @@ impl Triangulation {
                 // Exit the triangle, either onto the hull or staying
                 // in the triangulation
                 if edge_bc.fixed() {
+                    warn!("Crossing Fixed > 0.0 {:?}", edge_bc);
                     return Err(Error::CrossingFixedEdge);
                 }
                 assert!(edge_bc.buddy != EMPTY_EDGE);
@@ -1038,6 +1042,7 @@ impl Triangulation {
                     });
 
                 if edge_ca.fixed() {
+                    warn!("Crossing Fixed < 0.0 {:?}", edge_ca);
                     return Err(Error::CrossingFixedEdge);
                 }
                 assert!(edge_ca.buddy != EMPTY_EDGE);

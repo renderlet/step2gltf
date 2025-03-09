@@ -21,7 +21,7 @@ use crate::{
 use nurbs::{BSplineSurface, SampledCurve, SampledSurface, NURBSSurface, KnotVector};
 
 const SAVE_DEBUG_SVGS: bool = false;
-const SAVE_PANIC_SVGS: bool = false;
+const SAVE_PANIC_SVGS: bool = true;
 
 /// `TransformStack` is a mapping of representations to transformed children.
 type TransformStack<'a> =
@@ -311,22 +311,59 @@ fn cartesian_point(s: &StepFile, a: Id<CartesianPoint_>) -> DVec3 {
 }
 
 fn direction(s: &StepFile, a: Direction) -> DVec3 {
-    let p = s.entity(a).expect("Could not get cartesian point");
+    let p: &Direction_<'_> = s.entity(a).expect("Could not get cartesian point");
     DVec3::new(p.direction_ratios[0],
                p.direction_ratios[1],
                p.direction_ratios[2])
+}
+
+fn default_axis(axis: &DVec3) -> DVec3 {
+    let x_mag = axis[0].abs();
+    let y_mag = axis[1].abs();
+    let z_mag = axis[2].abs();
+
+    if x_mag <= y_mag && x_mag <= z_mag { 
+        // X Smallest
+        if y_mag <= z_mag {
+            return DVec3::new(0., axis[2], -axis[1]);
+        }
+        else {
+            return DVec3::new(0., -axis[2], axis[1]);
+        }
+    }
+    else if y_mag <= x_mag && y_mag <= z_mag{ 
+        // Y Smallest
+        if x_mag <= z_mag {
+            return DVec3::new(axis[2], 0., -axis[0]);
+        }
+        else {
+            return DVec3::new(-axis[2], 0., axis[0]);
+        }
+      }
+    else { 
+        // Z Smallest
+        if x_mag <= y_mag {
+            return DVec3::new(axis[1], -axis[0], 0.);
+        }
+        else {
+            return DVec3::new(-axis[1], axis[0], 0.);
+        } 
+    }
 }
 
 fn axis2_placement_3d(s: &StepFile, t: Id<Axis2Placement3d_>) -> (DVec3, DVec3, DVec3) {
     let a = s.entity(t).expect("Could not get Axis2Placement3d");
     let location = cartesian_point(s, a.location);
     // TODO: this doesn't necessarily match the behavior of `build_axes`
-    let axis = direction(s, a.axis.expect("Missing axis"));
+    let axis = match a.axis {
+        None => DVec3::new(0., 0., 1.0),
+        Some(r) => direction(s, r)
+    };
     let ref_direction = match a.ref_direction {
-        None => DVec3::new(1.0, 0.0, 0.0),
+        None => default_axis(&axis),
         Some(r) => direction(s, r),
     };
-    (location, axis, ref_direction)
+    (location, axis.normalize(), ref_direction.normalize())
 }
 
 fn shell(s: &StepFile, c: Shell, mesh: &mut Mesh, stats: &mut Stats) {
@@ -374,8 +411,14 @@ fn advanced_face(s: &StepFile, f: AdvancedFace, mesh: &mut Mesh,
     let mut edges = Vec::new();
     let v_start = mesh.verts.len();
     let mut num_pts = 0;
+
+
+    
+
     for b in &face.bounds {
         let bound_contours = face_bound(s, *b)?;
+
+        
 
         match bound_contours.len() {
             // We should always have non-zero items in the contour
@@ -421,6 +464,10 @@ fn advanced_face(s: &StepFile, f: AdvancedFace, mesh: &mut Mesh,
             }
         }
     }
+
+
+    //let v = &mesh.verts[v_start..];
+    //println!("{:?}", v);
 
     // We inject Stiner points based on the surface type to improve curvature,
     // e.g. for spherical sections.  However, we don't want triagulation to
@@ -479,12 +526,15 @@ fn advanced_face(s: &StepFile, f: AdvancedFace, mesh: &mut Mesh,
             error!("Got error while triangulating {}: {:?}",
                    face.face_geometry.0, e);
             stats.num_errors += 1;
+           // println!("{:?} | {:?}", pts, edges);
         },
         Err(e) => {
             error!("Got panic while triangulating {}: {:?}",
                    face.face_geometry.0, e);
             if SAVE_PANIC_SVGS {
                 let filename = format!("panic{}.svg", face.face_geometry.0);
+                println!("{:?} | {:?}", pts, edges);
+                println!("{:?}", surf);
                 cdt::save_debug_panic(&pts, &edges, &filename)
                     .expect("Could not save debug SVG");
             }
@@ -524,8 +574,9 @@ fn get_surface(s: &StepFile, surf: ap214::Surface) -> Result<Surface, Error> {
         Entity::SphericalSurface(c) => {
             // We'll ignore axis and ref_direction in favor of building an
             // orthonormal basis later on
-            let (location, _axis, _ref_direction) = axis2_placement_3d(s, c.position);
-            Ok(Surface::new_sphere(location, c.radius.0.0.0))
+            let (location, axis, ref_direction) = axis2_placement_3d(s, c.position);
+            //Ok(Surface::new_sphere(location, c.radius.0.0.0))
+            Ok(Surface::new_sphere_axis(axis, ref_direction, location, c.radius.0.0.0))
         },
         Entity::BSplineSurfaceWithKnots(b) =>
         {
@@ -683,7 +734,7 @@ fn edge_curve(s: &StepFile, e: EdgeCurve, orientation: bool) -> Result<Vec<DVec3
 fn curve(s: &StepFile, edge_curve: &ap214::EdgeCurve_,
          curve_id: ap214::Curve, orientation: bool) -> Result<Curve, Error>
 {
-    Ok(match &s[curve_id] {
+    Ok(match &s[curve_id] { 
         Entity::Circle(c) => {
             let (location, axis, ref_direction) = axis2_placement_3d(s, c.position.cast());
             Curve::new_circle(location, axis, ref_direction, c.radius.0.0.0,
