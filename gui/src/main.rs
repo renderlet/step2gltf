@@ -1,3 +1,4 @@
+use gltf::Gltf;
 use std::time::SystemTime;
 use winit::{
     event::{Event},
@@ -11,10 +12,9 @@ pub(crate) mod camera;
 pub(crate) mod model;
 
 use crate::app::App;
-use triangulate::mesh::Mesh;
 
 async fn run(start: SystemTime, event_loop: EventLoop<()>, window: Window,
-             loader: std::thread::JoinHandle<Mesh>)
+             loader: std::thread::JoinHandle<Gltf>)
 {
     let size = window.inner_size();
     let (surface, adapter) = {
@@ -85,14 +85,10 @@ fn main() {
     // and triangulated in the background while we wait for a GPU context
     let loader = std::thread::spawn(|| {
         println!("Loading mesh!");
-        use step::step_file::StepFile;
-        use triangulate::triangulate::triangulate;
-
-        let data = std::fs::read(input).expect("Could not open file");
-        let flat = StepFile::strip_flatten(&data);
-        let step = StepFile::parse(&flat);
-        let (mesh, _stats) = triangulate(&step);
-        mesh
+        use std::{fs, io};
+        let file = fs::File::open(input).unwrap();
+        let reader = io::BufReader::new(file);
+        gltf::Gltf::from_reader(reader).unwrap()
     });
 
     let event_loop = EventLoop::new();

@@ -3,28 +3,19 @@ use std::borrow::Cow;
 use bytemuck::{Pod, Zeroable};
 use nalgebra_glm as glm;
 use glm::{Vec4, Mat4};
+use gltf::Gltf;
 use wgpu::util::DeviceExt;
 
-use triangulate::mesh::{Vertex, Triangle};
 
 use crate::camera::Camera;
 
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
-struct GPUVertex {
-    pos: [f32; 4],
-    norm: [f32; 4],
-    color: [f32; 4],
-}
-
-impl GPUVertex {
-    fn from_vertex(v: &Vertex) -> Self {
-        Self {
-            pos: [v.pos.x as f32, v.pos.y as f32, v.pos.z as f32, 1.0],
-            norm: [v.norm.x as f32, v.norm.y as f32, v.norm.z as f32, 1.0],
-            color: [v.color.x as f32, v.color.y as f32, v.color.z as f32, 1.0],
-        }
-    }
+pub struct GPUVertex {
+    pub pos: [f32; 4],
+    pub norm: [f32; 4],
+    pub color: [f32; 4],
 }
 
 pub struct Model {
@@ -37,26 +28,62 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(device: &wgpu::Device, swapchain_format: wgpu::TextureFormat,
-               verts: &[Vertex], tris: &[Triangle]) -> Self {
+    pub fn new(device: &wgpu::Device, swapchain_format: wgpu::TextureFormat, gltf: &Gltf
+        ) -> (Self, Vec<GPUVertex>) {
 
-        let vertex_data: Vec<GPUVertex> = verts.into_iter()
-            .map(GPUVertex::from_vertex)
-            .collect();
-        let index_data: Vec<u32> = tris.into_iter()
-            .flat_map(|t| t.verts.iter())
-            .copied()
-            .collect();
+        // Load buffers
+        let mut buffer_data = Vec::new();
+        for buffer in gltf.buffers() {
+            let bin = match buffer.source() {
+                gltf::buffer::Source::Bin => {
+                    if let Some(blob) = gltf.blob.clone() {
+                        blob
+                    } else {
+                        panic!("Missing Blob");
+                    }
+                }
+                _ => panic!("Only GLB/embedded buffers supported")
+            };
+
+            buffer_data.push(bin);
+        }
+
+        let mesh = gltf.meshes().next().unwrap();
+        let primitive = mesh.primitives().next().unwrap();
+
+        let reader = primitive.reader(|buffer| Some(&buffer_data[buffer.index()]));
+
+        let (positions, normals, colors) = (
+            reader.read_positions().unwrap(),
+            reader.read_normals().unwrap(),
+            reader.read_colors(0).unwrap().into_rgba_f32(),
+        );
+
+        let indices = reader.read_indices().map(|indices| indices.into_u32());
+        let indices = match indices {
+            Some(indices) => indices.collect::<Vec<_>>(),
+            None => (0..positions.len() as u32).collect(),
+        };
+
+        let vertices = positions
+            .zip(normals)
+            .zip(colors)
+            .map(|((pos, norm), color)| GPUVertex {
+                pos: [pos[0], pos[1], pos[2], 1.0],
+                norm: [norm[0], norm[1], norm[2], 1.0],
+                color,
+            })
+            .collect::<Vec<_>>();
 
         let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex buffer"),
-            contents: bytemuck::cast_slice(&vertex_data),
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsage::VERTEX,
         });
 
         let index_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index buffer"),
-            contents: bytemuck::cast_slice(&index_data),
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
             usage: wgpu::BufferUsage::INDEX,
         });
 
@@ -170,14 +197,14 @@ impl Model {
                 multisample: wgpu::MultisampleState::default(),
         });
 
-        Model {
+        (Model {
             render_pipeline,
             index_buf,
             vertex_buf,
             uniform_buf,
             bind_group,
-            index_count: tris.len() as u32 * 3,
-        }
+            index_count: indices.len() as u32 // index_count: tris.len() as u32 * 3,
+        }, vertices)
     }
 
     pub fn draw(&self, camera: &Camera,

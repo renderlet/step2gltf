@@ -1,11 +1,12 @@
 use nalgebra_glm as glm;
 use glm::Vec2;
+use gltf;
 use winit::{
     dpi::{PhysicalSize},
     event::{ElementState, ModifiersState, WindowEvent, DeviceEvent, VirtualKeyCode, MouseScrollDelta},
 };
 
-use triangulate::mesh::Mesh;
+//use triangulate::mesh::Mesh;
 use crate::{backdrop::Backdrop, camera::Camera, model::Model};
 
 pub struct App {
@@ -16,7 +17,7 @@ pub struct App {
     swapchain_format: wgpu::TextureFormat,
     swapchain: wgpu::SwapChain,
 
-    loader: Option<std::thread::JoinHandle<Mesh>>,
+    loader: Option<std::thread::JoinHandle<gltf::Gltf>>,
     model: Option<Model>,
     backdrop: Backdrop,
     camera: Camera,
@@ -38,7 +39,7 @@ pub enum Reply {
 impl App {
     pub fn new(start_time: std::time::SystemTime, size: PhysicalSize<u32>,
                adapter: wgpu::Adapter, surface: wgpu::Surface,
-               device: wgpu::Device, loader: std::thread::JoinHandle<Mesh>)
+               device: wgpu::Device, loader: std::thread::JoinHandle<gltf::Gltf>)
         -> Self
     {
         let swapchain_format = adapter.get_swap_chain_preferred_format(&surface)
@@ -200,10 +201,10 @@ impl App {
                 .unwrap()
                 .join()
                 .expect("Failed to load mesh");
-            let model = Model::new(&self.device, self.swapchain_format,
-                                   &mesh.verts, &mesh.triangles);
+            let (model, vertices) = Model::new(
+                &self.device, self.swapchain_format,&mesh);
             self.model = Some(model);
-            self.camera.fit_verts(&mesh.verts);
+            self.camera.fit_verts(&vertices);
             self.first_frame = true;
         } else {
             self.first_frame = false;

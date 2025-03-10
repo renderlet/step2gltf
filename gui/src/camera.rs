@@ -3,7 +3,7 @@ use nalgebra_glm as glm;
 use glm::{Vec2, Vec3, Vec4, Mat4};
 use winit::event::MouseButton;
 
-use triangulate::mesh::Vertex;
+use crate::model::GPUVertex;
 
 #[derive(Copy, Clone, Debug)]
 enum MouseState {
@@ -116,10 +116,10 @@ impl Camera {
         }
     }
 
-    pub fn fit_verts(&mut self, verts: &[Vertex]) {
-        let xb = verts.iter().map(|v| v.pos.x).minmax().into_option().unwrap();
-        let yb = verts.iter().map(|v| v.pos.y).minmax().into_option().unwrap();
-        let zb = verts.iter().map(|v| v.pos.z).minmax().into_option().unwrap();
+    pub fn fit_verts(&mut self, verts: &[GPUVertex]) {
+        let xb = verts.iter().map(|v| v.pos[0]).minmax().into_option().unwrap();
+        let yb = verts.iter().map(|v| v.pos[1]).minmax().into_option().unwrap();
+        let zb = verts.iter().map(|v| v.pos[2]).minmax().into_option().unwrap();
         let dx = xb.1 - xb.0;
         let dy = yb.1 - yb.0;
         let dz = zb.1 - zb.0;
