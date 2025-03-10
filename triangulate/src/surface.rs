@@ -202,15 +202,16 @@ impl Surface {
             Surface::BSpline(surf) => Self::surf_lower(p, surf),
             Surface::NURBS(surf) => Self::surf_lower(p, surf),
             Surface::Sphere { mat_i, radius, .. } => {
+                //println!("{:?}", p_);
                 // mat_i is constructed in prepare to be a reasonable basis
                 let p = (mat_i * p_).xyz() / *radius;
-                let r = p.yz().norm();
+                let r = p.xy().norm();
 
                 println!("{:?}", p);
 
                 // Angle from 0 to PI
                 let angle = r.atan2(p.x);
-                let yz = p.yz();
+                let yz = p.xy();
                 Ok(if yz.norm() < EPSILON {
                     yz
                 } else {
@@ -235,7 +236,6 @@ impl Surface {
                     }
                 }
             },
-            /* 
             Surface::Sphere { mat, mat_i, location, .. } => {
                 let ref_direction = (verts[0].pos - *location).normalize();
                 let d1 = (verts.last().unwrap().pos - *location).normalize();
@@ -246,7 +246,7 @@ impl Surface {
                 *mat_i = mat
                     .try_inverse()
                     .expect("Could not invert");
-            },*/
+            },
             Surface::Torus { axis, mat, mat_i, location, .. } => {
                 let mean_dir = verts.iter()
                     .map(|v| v.pos - *location)

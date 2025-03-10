@@ -21,7 +21,7 @@ use crate::{
 use nurbs::{BSplineSurface, SampledCurve, SampledSurface, NURBSSurface, KnotVector};
 
 const SAVE_DEBUG_SVGS: bool = false;
-const SAVE_PANIC_SVGS: bool = true;
+const SAVE_PANIC_SVGS: bool = false;
 
 /// `TransformStack` is a mapping of representations to transformed children.
 type TransformStack<'a> =
